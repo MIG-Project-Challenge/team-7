@@ -25,14 +25,19 @@ def BBANDS(data, timeperiod, nbdevup, nbdevdn, matype=None):
     return bollinger_up, sma, bollinger_down
 
 def SMA(data, timeperiod):
+    data = pd.DataFrame(data)
     sma = data.rolling(window=timeperiod).mean()
-    return sma
+    return sma.to_numpy()
 
 def EMA(data, timeperiod):
+    data = pd.DataFrame(data)
     ema = data.ewm(span=timeperiod,adjust=False).mean()
-    return ema
+    return ema.to_numpy()
 
 def STOCH(high, low, close, fastk_period, slowk_period, slowk_matype, slowd_period, slowd_matype):
+    high = pd.DataFrame(high)
+    low = pd.DataFrame(low)
+    close = pd.DataFrame(close)
     high = high.rolling(fastk_period).max()
     low = low.rolling(fastk_period).min()
 
@@ -45,7 +50,7 @@ def STOCH(high, low, close, fastk_period, slowk_period, slowk_matype, slowd_peri
     else:
         slowd = slowk.rolling(slowd_period).apply(lambda x: np.convolve(x, np.ones(slowd_period), mode='valid') / slowd_period)
 
-    return slowk, slowd
+    return slowk.to_numpy(), slowd.to_numpy()
 
 def RSI(data, timeperiod):
     delta = data.diff()
