@@ -11,8 +11,7 @@ import pandas as pd
 from pathlib import Path
 import argparse
 import numpy as np
-import ta
-
+import ta_functions as ta # see https://github.com/TA-Lib/ta-lib-python
 
 # Read the data from the csv file
 def readData(path):
@@ -66,13 +65,12 @@ class Algo:
         # first calculate the SMAs
         fast_smas = []
         slow_smas = []
-        for stock in range(len(self.open_prices)):
-            fast_sma = round(pd.Series(self.open_prices[stock]).rolling(window=self.fastSMA).mean(), 2)
-            slow_sma = round(pd.Series(self.open_prices[stock]).rolling(window=self.slowSMA).mean(), 2)
+        for stock in range(len(self.open_prices)): 
+            dataframe = pd.DataFrame(self.open_prices[stock])
+            fast_sma = ta.SMA(dataframe, timeperiod=self.fastSMA).to_numpy()
+            slow_sma = ta.SMA(dataframe, timeperiod=self.slowSMA).to_numpy()
             fast_smas.append(fast_sma)
             slow_smas.append(slow_sma)
-
-        print (fast_sma, slow_sma)
 
         # now calculate trades
         for day in range(1, len(self.open_prices[0])-1):
