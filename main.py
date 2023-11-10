@@ -5,6 +5,7 @@ import pandas as pd
 from pathlib import Path
 import argparse
 import numpy as np
+import math
 
 # Function to calculate Average True Range (ATR)
 def calculateATR(data, timeperiod):
@@ -79,10 +80,10 @@ class Algo:
 
                 if trend[day] == 1 and trend[day - 1] == -1:
                     self.trades[stock][day + 1] = 1
-                    self.handleBuy(stock, day + 1, 1)
+                    self.handleBuy(stock, day + 1)
                 elif trend[day] == -1 and trend[day - 1] == 1:
                     self.trades[stock][day + 1] = -1
-                    self.handleSell(stock, day + 1, 1)
+                    self.handleSell(stock, day + 1)
                 else:
                     self.trades[stock][day + 1] = 0
 
@@ -92,71 +93,23 @@ class Algo:
         # for convention please name the file "trades.npy"
         np.save(path, self.trades)
 
-    def handleBuy(self, stock, day, numShares):
-        # case 1: we have a positive position and are buying
-        if self.positions[stock] >= 0:
-                self.cash -= self.open_prices[stock][day] * numShares
+    def handleBuy(self, stock, day):
+        # Calculate the number of shares to buy based on available cash
+        price = self.open_prices[stock][day]
+        numShares = math.floor(int(self.cash / price))
 
-                if not self.cashValid():
-                    # TODO: may want to handle this differently
-                    print("INVALID CASH AMOUNT, COULD NOT AFFORD TRANSACTION")
+        if numShares > 0:
+            self.cash -= price * numShares
+            self.positions[stock] += numShares
 
-                self.positions[stock] += numShares
+    def handleSell(self, stock, day):
+        # Calculate the number of shares to sell based on current position
+        price = self.open_prices[stock][day]
+        numShares = abs(self.positions[stock])
 
-        # case 2: we have short a position and are buying
-        elif self.positions[stock] < 0:
-            buy_amount = min(numShares - abs(self.positions[stock]), 0)
-            short_close_amount = min(abs(self.positions[stock]), numShares)
-
-            while short_close_amount > 0:
-                # the amount of positions to close in the current short order
-                positions_to_close = min(
-                    self.short_positions[stock][0][1], short_close_amount
-                )
-                short_close_amount -= positions_to_close
-
-                # the short value is = (short price - curr price)*amount of shares shorted
-                self.cash += (
-                    self.short_positions[stock][0][0] - self.open_prices[stock][day]
-                ) * positions_to_close
-
-                if positions_to_close == self.short_positions[stock][0][1]:
-                    self.short_positions[stock].pop(0)
-
-                else:
-                    # subtract the amount of closed shares from the given price
-                    self.short_positions[0][1] -= positions_to_close
-
-            if buy_amount > 0:
-                self.cash -= self.open_prices[stock][day] * buy_amount
-                self.positions[stock] += buy_amount
-
-    def handleSell(self, stock, day, numShares):
-        # this handles selling and shorting
-        # case 3: we have a positive position and are selling/shorting
-        numShares = -abs(numShares)
-        if self.positions[stock] > 0:
-            sell_amount = min(abs(numShares), self.positions[stock])
-            short_amount = max(abs(numShares) - self.positions[stock], 0)
-
-            self.cash += self.open_prices[stock][day] * sell_amount
-            self.positions[stock] -= sell_amount
-
-            if short_amount > 0:
-                short_price_amount = [self.open_prices[stock][day], short_amount]
-                self.short_positions[stock].append(short_price_amount)
-
-                self.positions[stock] -= short_amount
-
-        # case 4: we have a short position and are selling/shorting
-        # or don't have any position yet
-        elif self.positions[stock] <= 0 and numShares:
-            short_amount = abs(numShares)
-
-            short_price_amount = [self.open_prices[stock][day], short_amount]
-            self.short_positions[stock].append(short_price_amount)
-
-            self.positions[stock] -= short_amount
+        if numShares > 0:
+            self.cash += price * numShares
+            self.positions[stock] -= numShares
 
     def cashValid(self):
         return self.cash >= 0
